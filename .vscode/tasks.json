@@ -1,0 +1,55 @@
+{
+  "tasks": [
+    {
+      "type": "cppbuild",
+      "label": "C/C++ (Win32): g++.exe build active file",
+      "command": "C:\\msys64\\mingw64\\bin\\g++.exe",
+      "args": [
+        "-fdiagnostics-color=always",
+        "-g",
+        "-Wall",
+        "-Weffc++",
+        "-Wextra",
+        "-Wconversion",
+        "-Wsign-conversion",
+        "-Werror",
+        "${file}",
+        "-o",
+        "${fileDirname}\\${fileBasenameNoExtension}.exe",
+        "-std=c++20"
+      ],
+      "options": {
+        "cwd": "${fileDirname}"
+      },
+      "problemMatcher": ["$gcc"],
+      "group": "build",
+      "detail": "Custom task"
+    },
+    {
+      "type": "cppbuild",
+      "label": "C/C++ (Linux): g++ build active file",
+      "command": "/usr/bin/g++",
+      "args": [
+        "-fdiagnostics-color=always",
+        "-g",
+        "-Wall",
+        "-Weffc++",
+        "-Wextra",
+        "-Wconversion",
+        "-Wsign-conversion",
+        "-Werror",
+        "${file}",
+        "-o",
+        "${fileDirname}/${fileBasenameNoExtension}",
+        "-std=c++20"
+      ],
+      "options": {
+        "cwd": "${fileDirname}"
+      },
+      "problemMatcher": ["$gcc"],
+      "group": "build",
+      "detail": "Custom task"
+    }
+  ],
+  "version": "2.0.0"
+}
