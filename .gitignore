@@ -38,3 +38,5 @@
 # Virtual environments
 env/
 venv/
+
+bin/
