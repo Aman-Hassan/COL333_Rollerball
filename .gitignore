@@ -32,6 +32,9 @@
 *.app
 
 # VS Code files
-
 .vscode/
 *.code-workspace
+
+# Virtual environments
+env/
+venv/
