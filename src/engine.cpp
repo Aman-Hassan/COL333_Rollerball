@@ -9,20 +9,8 @@
 typedef uint8_t U8;
 typedef uint16_t U16;
 
-// #define pos(x, y) (((y) << 3) | (x))
-// #define gety(p) ((p) >> 3)
-// #define getx(p) ((p) & 0x7)
-
-// #define move(p0, p1) (((p0) << 8) | (p1))
-// #define move_promo(p0, p1, pt) (((p0) << 8) | (p1) | (pt))
-// #define getp0(m) (((m) >> 8) & 0x3f)
-// #define getpromo(m) ((m) & (PAWN_BISHOP | PAWN_ROOK))
-// #define getp1(m) ((m) & 0x3f)
-
-// #define DEAD pos(7, 7)
-
-int MinVal(Board *b, int alpha, int beta, int cutoff);
-int MaxVal(Board *b, int alpha, int beta, int cutoff);
+float MinVal(Board *b, float alpha, float beta, int cutoff);
+float MaxVal(Board *b, float alpha, float beta, int cutoff);
 
 constexpr U8 cw_90[64] = {
     48, 40, 32, 24, 16, 8, 0, 7,
@@ -115,34 +103,60 @@ void undo_last_move(Board *b, U16 move)
 }
 
 // No of white - No of black
-int eval_basic(const Board *b)
+float material_check(const Board *b)
 {
-    int count = 0;
+    float val = 0;
+    float weight_arr[12] = {8, 8, 0, 4, 2, 2, 8, 8, 0, 4, 2, 2};
     U8 *pieces = (U8 *)(&(b->data));
     for (int i = -6; i < 6; i++)
     {
         // // std::cout << "checking " << piece_to_char(this->data.board_0[pieces[i]]) << "\n";
         if (pieces[i + 6] != DEAD)
         {
-            count += ((i >= 0) - (i < 0));
+            val += (((i >= 0) - (i < 0))) * weight_arr[i + 6];
         }
     }
-    return count;
+    return val;
 }
 
-int MinVal(Board *b, int alpha, int beta, int cutoff)
+float check_condition(const Board *b)
 {
-    // std::cout << "Entered MinVal\n";
-    if (cutoff == 0)
-        return eval_basic(b);
+    //
+    float val = 0;
+    bool player = (b->data.player_to_play == WHITE); // current player
+    if (b->in_check())
+    {
+        // if white is in check, bad, negative
+        val = 5 * std::pow(-1, int(player));
+        if (b->get_legal_moves().size() == 0) // if you're checkmated
+        {
+            val += 500 * std::pow(-1, int(player));
+        }
+    }
+    return val;
+}
+
+float eval_fn(const Board *b)
+{
+    float final_val = 0;
+    final_val += material_check(b);
+    final_val += check_condition(b);
+    return final_val;
+}
+
+float MinVal(Board *b, float alpha, float beta, int cutoff)
+{
     auto moveset = b->get_legal_moves();
+    // std::cout << "Entered MinVal\n";
+    if (cutoff == 0 || moveset.size() == 0)
+        return std::min(beta, eval_fn(b));
 
     for (auto m : moveset)
     {
         b->do_move(m);
         // std::cout << "Depth:" << 2 - cutoff << std::endl;
         // std::cout << "Next Move to take:" << move_to_str(m) << "\n\n";
-        int child = MaxVal(b, alpha, beta, cutoff - 1);
+        float child = MaxVal(b, alpha, beta, cutoff - 1);
         // std::cout << "Returned Value from Maxval at depth " << 2 - cutoff << ":" << child << "\n\n";
         beta = std::min(beta, child);
 
@@ -153,18 +167,19 @@ int MinVal(Board *b, int alpha, int beta, int cutoff)
     return beta;
 }
 
-int MaxVal(Board *b, int alpha, int beta, int cutoff)
+float MaxVal(Board *b, float alpha, float beta, int cutoff)
 {
     // std::cout << "Entered MaxVal\n";
-    if (cutoff == 0)
-        return eval_basic(b);
     auto moveset = b->get_legal_moves();
+
+    if (cutoff == 0 || moveset.size() == 0)
+        return std::max(alpha, eval_fn(b));
     for (auto m : moveset)
     {
         b->do_move(m);
         // std::cout << "Depth:" << 2 - cutoff << std::endl;
         // std::cout << "Next Move to take:" << move_to_str(m) << "\n\n";
-        int child = MinVal(b, alpha, beta, cutoff - 1);
+        float child = MinVal(b, alpha, beta, cutoff - 1);
         // std::cout << "Returned Value from Minval at depth " << 2 - cutoff << ":" << child << "\n\n";
         alpha = std::max(alpha, child);
         if (alpha >= beta)
@@ -180,8 +195,8 @@ void Minimax(Board *b, int cutoff, std::atomic_ushort *move_ptr)
 {
     auto moveset = b->get_legal_moves();
 
-    int alpha = std::numeric_limits<int>::min();
-    int beta = std::numeric_limits<int>::max();
+    float alpha = std::numeric_limits<float>::min();
+    float beta = std::numeric_limits<float>::max();
     if (b->data.player_to_play == WHITE) // Runs maxval if white
     {
         for (auto m : moveset)
@@ -190,7 +205,7 @@ void Minimax(Board *b, int cutoff, std::atomic_ushort *move_ptr)
             // std::cout << "Minimax" << std::endl;
             // std::cout << "Depth:" << 1 - cutoff << std::endl;
             // std::cout << "Next Move to take:" << move_to_str(m) << "\n\n";
-            int child = MinVal(b, alpha, beta, cutoff);
+            float child = MinVal(b, alpha, beta, cutoff);
             alpha = std::max(alpha, child);
             if (alpha == child)
                 *move_ptr = m;
@@ -204,7 +219,7 @@ void Minimax(Board *b, int cutoff, std::atomic_ushort *move_ptr)
         for (auto m : moveset)
         {
             b->do_move(m);
-            int child = MaxVal(b, alpha, beta, cutoff);
+            float child = MaxVal(b, alpha, beta, cutoff);
             beta = std::max(alpha, child);
             if (beta == child)
                 *move_ptr = m;
