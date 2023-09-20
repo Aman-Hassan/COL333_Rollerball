@@ -110,8 +110,8 @@ void undo_last_move(Board *b, U16 move)
     b->data.board_180[cw_180[p1]] = deadpiece;
     b->data.board_270[acw_90[p1]] = deadpiece;
 
-    // std::cout << "Undid last move\n";
-    // std::cout << all_boards_to_str(*this);
+    // // std::cout << "Undid last move\n";
+    // // std::cout << all_boards_to_str(*this);
 }
 
 // No of white - No of black
@@ -121,7 +121,7 @@ int eval_basic(const Board *b)
     U8 *pieces = (U8 *)(&(b->data));
     for (int i = -6; i < 6; i++)
     {
-        // std::cout << "checking " << piece_to_char(this->data.board_0[pieces[i]]) << "\n";
+        // // std::cout << "checking " << piece_to_char(this->data.board_0[pieces[i]]) << "\n";
         if (pieces[i + 6] != DEAD)
         {
             count += ((i >= 0) - (i < 0));
@@ -132,14 +132,20 @@ int eval_basic(const Board *b)
 
 int MinVal(Board *b, int alpha, int beta, int cutoff)
 {
+    // std::cout << "Entered MinVal\n";
     if (cutoff == 0)
         return eval_basic(b);
     auto moveset = b->get_legal_moves();
+
     for (auto m : moveset)
     {
         b->do_move(m);
+        // std::cout << "Depth:" << 2 - cutoff << std::endl;
+        // std::cout << "Next Move to take:" << move_to_str(m) << "\n\n";
         int child = MaxVal(b, alpha, beta, cutoff - 1);
+        // std::cout << "Returned Value from Maxval at depth " << 2 - cutoff << ":" << child << "\n\n";
         beta = std::min(beta, child);
+
         if (alpha >= beta)
             return child;
         undo_last_move(b, m);
@@ -149,13 +155,17 @@ int MinVal(Board *b, int alpha, int beta, int cutoff)
 
 int MaxVal(Board *b, int alpha, int beta, int cutoff)
 {
+    // std::cout << "Entered MaxVal\n";
     if (cutoff == 0)
         return eval_basic(b);
     auto moveset = b->get_legal_moves();
     for (auto m : moveset)
     {
         b->do_move(m);
+        // std::cout << "Depth:" << 2 - cutoff << std::endl;
+        // std::cout << "Next Move to take:" << move_to_str(m) << "\n\n";
         int child = MinVal(b, alpha, beta, cutoff - 1);
+        // std::cout << "Returned Value from Minval at depth " << 2 - cutoff << ":" << child << "\n\n";
         alpha = std::max(alpha, child);
         if (alpha >= beta)
             return child;
@@ -164,25 +174,28 @@ int MaxVal(Board *b, int alpha, int beta, int cutoff)
     return alpha;
 }
 
-U16 Minimax(Board *b)
+U16 bestmove = 0;
+
+void Minimax(Board *b, int cutoff, std::atomic_ushort *move_ptr)
 {
     auto moveset = b->get_legal_moves();
 
-    U16 bestmove = 0;
-
-    int alpha = std::numeric_limits<int>::max();
-    int beta = std::numeric_limits<int>::min();
+    int alpha = std::numeric_limits<int>::min();
+    int beta = std::numeric_limits<int>::max();
     if (b->data.player_to_play == WHITE) // Runs maxval if white
     {
         for (auto m : moveset)
         {
             b->do_move(m);
-            int child = MinVal(b, alpha, beta, 20);
+            // std::cout << "Minimax" << std::endl;
+            // std::cout << "Depth:" << 1 - cutoff << std::endl;
+            // std::cout << "Next Move to take:" << move_to_str(m) << "\n\n";
+            int child = MinVal(b, alpha, beta, cutoff);
             alpha = std::max(alpha, child);
             if (alpha == child)
-                bestmove = m;
+                *move_ptr = m;
             if (alpha >= beta)
-                return bestmove;
+                return;
             undo_last_move(b, m);
         }
     }
@@ -191,17 +204,17 @@ U16 Minimax(Board *b)
         for (auto m : moveset)
         {
             b->do_move(m);
-            int child = MaxVal(b, alpha, beta, 20);
+            int child = MaxVal(b, alpha, beta, cutoff);
             beta = std::max(alpha, child);
             if (beta == child)
-                bestmove = m;
+                *move_ptr = m;
             if (alpha >= beta)
-                return bestmove;
+                return;
             undo_last_move(b, m);
         }
     }
 
-    return bestmove;
+    // return bestmove;
 }
 
 void Engine::find_best_move(const Board &b)
@@ -223,6 +236,40 @@ void Engine::find_best_move(const Board &b)
         }
         std::cout << std::endl;
         Board *b_copy = b.copy();
-        this->best_move = Minimax(b_copy);
+        Minimax(b_copy, 50, &(this->best_move));
+        // this->best_move = bestmove;
     }
 }
+
+// #include <algorithm>
+// #include <random>
+// #include <iostream>
+
+// #include "board.hpp"
+// #include "engine.hpp"
+
+// void Engine::find_best_move(const Board& b) {
+
+//     // pick a random move
+
+//     auto moveset = b.get_legal_moves();
+//     if (moveset.size() == 0) {
+//         this->best_move = 0;
+//     }
+//     else {
+//         std::vector<U16> moves;
+//         // std::cout << all_boards_to_str(b) << std::endl;
+//         for (auto m : moveset) {
+//             // std::cout << move_to_str(m) << " ";
+//         }
+//         // std::cout << std::endl;
+//         std::sample(
+//             moveset.begin(),
+//             moveset.end(),
+//             std::back_inserter(moves),
+//             1,
+//             std::mt19937{std::random_device{}()}
+//         );
+//         this->best_move = moves[0];
+//     }
+// }
