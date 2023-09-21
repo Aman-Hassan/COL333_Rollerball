@@ -101,8 +101,8 @@ void undo_last_move(Board *b, U16 move)
     b->data.board_180[cw_180[p1]] = deadpiece;
     b->data.board_270[acw_90[p1]] = deadpiece;
 
-    // // std::cout << "Undid last move\n";
-    // // std::cout << all_boards_to_str(*this);
+    // std::cout << "Undid last move\n";
+    // std::cout << all_boards_to_str(*this);
 }
 
 // No of white - No of black
@@ -159,7 +159,7 @@ void print_state(Board *b, U16 move, int cutoff)
         std::cout << m << " ";
     }
     std::cout << std::endl;
-    std::cout << "Next Move to take: " << move_to_str(move) << std::endl;
+    // std::cout << "Next Move to take: " << move_to_str(move) << std::endl;
     std::cout << "Present Depth:" << global_cutoff - cutoff << std::endl;
     std::cout << "\n";
 }
@@ -185,22 +185,26 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
         return std::min(beta, eval_fn(b));
     }
 
+    float min_val = std::numeric_limits<float>::max();
     for (auto m : moveset)
     {
-        print_state(b, m, cutoff); // Print the board state, moves taken till now, next move to take and current depth
         b->do_move(m);
         moves_taken.push_back(move_to_str(m));
+        print_state(b, m, cutoff); // Print the board state, moves taken till now, next move to take and current depth
         float child = MaxVal(b, alpha, beta, cutoff - 1);
         std::cout << "Back at MinVal, Returned Value from Maxval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
         beta = std::min(beta, child);
+        min_val = std::min(min_val, child);
         undo_last_move(b, m);
         moves_taken.pop_back();
         if (alpha >= beta)
+        {
             std::cout << "Pruned at depth " << global_cutoff - cutoff << "\n\n";
-        return child;
+            break;
+        }
     }
     std::cout << "Minval at depth " << global_cutoff - cutoff << "ended \n\n";
-    return beta;
+    return min_val;
 }
 
 float MaxVal(Board *b, float alpha, float beta, int cutoff)
@@ -213,26 +217,61 @@ float MaxVal(Board *b, float alpha, float beta, int cutoff)
         std::cout << "Reached cutoff/Moveset size 0, printing eval function: \n\n";
         return std::max(alpha, eval_fn(b));
     }
+    float max_val = std::numeric_limits<float>::lowest();
     for (auto m : moveset)
     {
-        print_state(b, m, cutoff);
         b->do_move(m);
         moves_taken.push_back(move_to_str(m));
+        print_state(b, m, cutoff);
         float child = MinVal(b, alpha, beta, cutoff - 1);
         std::cout << "Back at MaxVal, Returned Value from Minval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
         alpha = std::max(alpha, child);
+        max_val = std::max(max_val, child);
         undo_last_move(b, m);
         moves_taken.pop_back();
         if (alpha >= beta)
+        {
             std::cout << "Pruned at depth " << global_cutoff - cutoff << "\n\n";
-        return child;
+            break;
+        }
     }
     std::cout << "Maxval at depth " << global_cutoff - cutoff << "ended"
               << "\n\n";
-    return alpha;
+    return max_val;
 }
 
 U16 bestmove = 0;
+
+// U16 Minimax2(Board *b, int cutoff, float alpha, float beta, bool maximising)
+// {
+//     auto moveset = b->get_legal_moves();
+//     std::cout << "Starting new Minimax\n";
+//     print_moveset(moveset);
+//     if (maximising)
+//     {
+//         float maxval = std::numeric_limits<float>::lowest();
+//         U16 bestmove = 0;
+//         for (auto m : moveset)
+//         {
+//             std::cout << "Back at Minimax" << std::endl;
+//             b->do_move(m);
+//             moves_taken.push_back(move_to_str(m));
+//             print_state(b, m, cutoff);
+//             float child = Minimax2(b, cutoff - 1, alpha, beta, false);
+//             if (child > bestmove)
+//                 maxval = child;
+//             bestmove = m;
+//             alpha = std::max(alpha, child);
+//             undo_last_move(b, m);
+//             moves_taken.pop_back();
+//             // if (alpha == child)
+//             //     bestmove = m;
+//             if (alpha >= beta)
+//                 return bestmove;
+//             // commented the above because at the start beta is always +inf
+//         }
+//     }
+// }
 
 U16 Minimax(Board *b, int cutoff)
 {
@@ -248,17 +287,20 @@ U16 Minimax(Board *b, int cutoff)
         for (auto m : moveset)
         {
             std::cout << "Back at Minimax" << std::endl;
-            print_state(b, m, cutoff);
             b->do_move(m);
             moves_taken.push_back(move_to_str(m));
+            print_state(b, m, cutoff);
             float child = MinVal(b, alpha, beta, cutoff - 1);
+            if (child > alpha)
+                bestmove = m;
             alpha = std::max(alpha, child);
             undo_last_move(b, m);
             moves_taken.pop_back();
-            if (alpha == child)
-                bestmove = m;
+            // if (alpha == child)
+            //     bestmove = m;
             if (alpha >= beta)
                 return bestmove;
+            // commented the above because at the start beta is always +inf
         }
     }
     else
@@ -267,12 +309,15 @@ U16 Minimax(Board *b, int cutoff)
         {
             b->do_move(m);
             float child = MaxVal(b, alpha, beta, cutoff - 1);
+            if (child < beta)
+                bestmove = m;
             beta = std::min(beta, child);
             undo_last_move(b, m);
-            if (beta == child)
-                bestmove = m;
+            // if (beta == child)
+            //     bestmove = m;
             if (alpha >= beta)
                 return bestmove;
+            // commented the above because at the start alpha is always -inf
         }
     }
     std::cout << "MiniMax Ended" << std::endl;
