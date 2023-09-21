@@ -241,7 +241,7 @@ U16 Minimax(Board *b, int cutoff)
     print_moveset(moveset);
     U16 bestmove = 0;
 
-    float alpha = std::numeric_limits<float>::min();
+    float alpha = std::numeric_limits<float>::lowest(); // ::min() would only give least positive float instead of smallest float
     float beta = std::numeric_limits<float>::max();
     if (b->data.player_to_play == WHITE) // Runs maxval if white
     {
