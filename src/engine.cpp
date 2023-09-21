@@ -9,7 +9,7 @@
 typedef uint8_t U8;
 typedef uint16_t U16;
 
-int global_cutoff = 2;
+int global_cutoff = 3;
 std::vector<std::string> moves_taken;
 
 float MinVal(Board *b, float alpha, float beta, int cutoff);
