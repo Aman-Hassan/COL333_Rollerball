@@ -3,7 +3,6 @@
 #include <iostream>
 #include <limits>
 #include <chrono>
-#include <bitset>
 
 #include "board.hpp"
 #include "engine.hpp"
@@ -137,21 +136,6 @@ float check_condition(Board *b)
     return val;
 }
 
-float rook_distance(Board *b)
-{
-    std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
-    std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
-    std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
-    std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
-
-    U8 rook_pos = 0;
-    U8 king_pos = 0;
-    std::bitset<4> rook_arr;
-    rook_arr[0] = bottom.count(rook_pos);
-    rook_arr[1] = left.count(rook_pos);
-    rook_arr[2] = top.count(rook_pos);
-    rook_arr[3] = right.count(rook_pos);
-}
 float eval_fn(Board *b)
 {
     float final_val = 0;
