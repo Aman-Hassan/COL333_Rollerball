@@ -2,6 +2,7 @@
 #include <random>
 #include <iostream>
 #include <limits>
+#include <chrono>
 
 #include "board.hpp"
 #include "engine.hpp"
@@ -318,8 +319,14 @@ void Engine::find_best_move(const Board &b)
         }
         std::cout << std::endl;
         Board *b_copy = b.copy();
+
+        auto start = std::chrono::high_resolution_clock::now();
         U16 bestmove = Minimax(b_copy, global_cutoff);
-        this->best_move = bestmove;
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        if (duration.count() < 2000)
+            this->best_move = bestmove;
         std::cout << "Best move chosen:" << move_to_str(bestmove) << std::endl;
         delete b_copy;
     }
