@@ -10,7 +10,7 @@
 typedef uint8_t U8;
 typedef uint16_t U16;
 
-int global_cutoff = 5;
+int global_cutoff = 4;
 std::vector<std::string> moves_taken;
 std::vector<U8> last_killed_pieces;
 std::vector<int> last_killed_pieces_idx;
@@ -322,6 +322,61 @@ U16 Minimax(Board *b, int cutoff)
     return bestmove;
 }
 
+U16 best_move_obtained = 0;
+
+float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximizing)
+{
+    std::unordered_set<U16> moveset = b->get_legal_moves();
+
+    if (cutoff == 0 || moveset.size() == 0)
+    {
+        return eval_fn(b);
+    }
+
+    if (Maximizing)
+    {
+        float max_eval = std::numeric_limits<float>::lowest();
+        for (auto m : moveset)
+        {
+            do_move(b, m);
+            float eval = unified_minimax(b, cutoff - 1, alpha, beta, false);
+            undo_last_move(b, m);
+            max_eval = std::max(max_eval, eval);
+            if (cutoff == global_cutoff && eval > alpha)
+            {
+                best_move_obtained = m;
+            }
+            alpha = std::max(alpha, eval);
+            if (alpha >= beta)
+            {
+                break;
+            }
+        }
+        return max_eval;
+    }
+    else
+    {
+        float min_eval = std::numeric_limits<float>::max();
+        for (auto m : moveset)
+        {
+            do_move(b, m);
+            float eval = unified_minimax(b, cutoff - 1, alpha, beta, true);
+            undo_last_move(b, m);
+            min_eval = std::min(min_eval, eval);
+            if (cutoff == global_cutoff && eval < beta)
+            {
+                best_move_obtained = m;
+            }
+            beta = std::min(beta, eval);
+            if (alpha >= beta)
+            {
+                break;
+            }
+        }
+        return min_eval;
+    }
+}
+
 void Engine::find_best_move(const Board &b)
 {
 
@@ -344,13 +399,13 @@ void Engine::find_best_move(const Board &b)
         Board *b_copy = b.copy();
 
         auto start = std::chrono::high_resolution_clock::now();
-        U16 bestmove = Minimax(b_copy, global_cutoff);
+        unified_minimax(b_copy, global_cutoff, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), b.data.player_to_play == WHITE);
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
         if (duration.count() < 2000)
-            this->best_move = bestmove;
-        std::cout << "Best move chosen:" << move_to_str(bestmove) << std::endl;
+            this->best_move = best_move_obtained;
+        std::cout << "Best move chosen:" << move_to_str(best_move_obtained) << std::endl;
         delete b_copy;
     }
 }
