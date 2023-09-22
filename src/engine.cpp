@@ -14,6 +14,8 @@ typedef uint16_t U16;
 
 int global_cutoff = 3;
 std::vector<std::string> moves_taken;
+std::vector<U8> last_killed_pieces;
+std::vector<int> last_killed_pieces_idx;
 
 float MinVal(Board *b, float alpha, float beta, int cutoff);
 float MaxVal(Board *b, float alpha, float beta, int cutoff);
@@ -58,6 +60,56 @@ constexpr U8 id[64] = {
     48, 49, 50, 51, 52, 53, 54, 55,
     56, 57, 58, 59, 60, 61, 62, 63};
 
+void do_move(Board *b, U16 move)
+{
+
+    U8 p0 = getp0(move);
+    U8 p1 = getp1(move);
+    U8 promo = getpromo(move);
+    U8 piecetype = b->data.board_0[p0];
+    last_killed_pieces.push_back(0);
+    last_killed_pieces_idx.push_back(-1);
+
+    // scan and get piece from coord
+    U8 *pieces = (U8 *)b;
+    for (int i = 0; i < 12; i++)
+    {
+        if (pieces[i] == p1)
+        {
+            pieces[i] = DEAD;
+            last_killed_pieces.back() = b->data.board_0[p1];
+            last_killed_pieces_idx.back() = i;
+        }
+        if (pieces[i] == p0)
+        {
+            pieces[i] = p1;
+        }
+    }
+
+    if (promo == PAWN_ROOK)
+    {
+        piecetype = (piecetype & (WHITE | BLACK)) | ROOK;
+    }
+    else if (promo == PAWN_BISHOP)
+    {
+        piecetype = (piecetype & (WHITE | BLACK)) | BISHOP;
+    }
+
+    b->data.board_0[p1] = piecetype;
+    b->data.board_90[cw_90[p1]] = piecetype;
+    b->data.board_180[cw_180[p1]] = piecetype;
+    b->data.board_270[acw_90[p1]] = piecetype;
+
+    b->data.board_0[p0] = 0;
+    b->data.board_90[cw_90[p0]] = 0;
+    b->data.board_180[cw_180[p0]] = 0;
+    b->data.board_270[acw_90[p0]] = 0;
+
+    b->data.player_to_play = (PlayerColor)(b->data.player_to_play ^ (WHITE | BLACK)); // flipping player
+    // std::cout << "Did last move\n";
+    // std::cout << all_boards_to_str(*this);
+}
+
 void undo_last_move(Board *b, U16 move)
 {
 
@@ -66,8 +118,7 @@ void undo_last_move(Board *b, U16 move)
     U8 promo = getpromo(move);
 
     U8 piecetype = b->data.board_0[p1];
-    U8 deadpiece = b->data.last_killed_piece;
-    b->data.last_killed_piece = 0;
+    U8 deadpiece = 0;
 
     // scan and get piece from coord
     U8 *pieces = (U8 *)(&(b->data));
@@ -79,11 +130,15 @@ void undo_last_move(Board *b, U16 move)
             break;
         }
     }
-    if (b->data.last_killed_piece_idx >= 0)
+
+    if (last_killed_pieces_idx.back() != -1)
     {
-        pieces[b->data.last_killed_piece_idx] = p1;
-        b->data.last_killed_piece_idx = -1;
+        deadpiece = last_killed_pieces.back(); // updating deadpiece if there is something in vector
+        pieces[last_killed_pieces_idx.back()] = p1;
     }
+
+    last_killed_pieces.pop_back();
+    last_killed_pieces_idx.pop_back();
 
     if (promo == PAWN_ROOK)
     {
@@ -103,6 +158,11 @@ void undo_last_move(Board *b, U16 move)
     b->data.board_90[cw_90[p1]] = deadpiece;
     b->data.board_180[cw_180[p1]] = deadpiece;
     b->data.board_270[acw_90[p1]] = deadpiece;
+
+    b->data.player_to_play = (PlayerColor)(b->data.player_to_play ^ (WHITE | BLACK)); // flipping player again
+
+    // std::cout << "Undid last move\n";
+    // std::cout << all_boards_to_str(*this);
 }
 
 // No of white - No of black
@@ -217,16 +277,13 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
     float min_val = std::numeric_limits<float>::max();
     for (auto m : moveset)
     {
-        Board *b_copy = b->copy();
-        b_copy->do_move(m);
-        // b->do_move(m);
+        do_move(b, m);
         // moves_taken.push_back(move_to_str(m));
-        float child = MaxVal(b_copy, alpha, beta, cutoff - 1);
+        float child = MaxVal(b, alpha, beta, cutoff - 1);
         beta = std::min(beta, child);
         min_val = std::min(min_val, child);
         // moves_taken.pop_back();
-        delete b_copy;
-        // undo_last_move(b, m);
+        undo_last_move(b, m);
         if (alpha >= beta)
         {
             break;
@@ -245,16 +302,13 @@ float MaxVal(Board *b, float alpha, float beta, int cutoff)
     float max_val = std::numeric_limits<float>::lowest();
     for (auto m : moveset)
     {
-        Board *b_copy = b->copy();
-        b_copy->do_move(m);
-        // b->do_move(m);
+        do_move(b, m);
         // moves_taken.push_back(move_to_str(m));
-        float child = MinVal(b_copy, alpha, beta, cutoff - 1);
+        float child = MinVal(b, alpha, beta, cutoff - 1);
         alpha = std::max(alpha, child);
         max_val = std::max(max_val, child);
         // moves_taken.pop_back();
-        delete b_copy;
-        // undo_last_move(b, m);
+        undo_last_move(b, m);
         if (alpha >= beta)
         {
             break;
@@ -277,16 +331,13 @@ U16 Minimax(Board *b, int cutoff)
     {
         for (auto m : moveset)
         {
-            Board *b_copy = b->copy();
-            b_copy->do_move(m);
-            // b->do_move(m);
+            do_move(b, m);
             // moves_taken.push_back(move_to_str(m));
-            float child = MinVal(b_copy, alpha, beta, cutoff - 1);
+            float child = MinVal(b, alpha, beta, cutoff - 1);
             if (child > alpha)
                 bestmove = m;
             alpha = std::max(alpha, child);
-            delete b_copy;
-            // undo_last_move(b, m);
+            undo_last_move(b, m);
             // moves_taken.pop_back();
         }
     }
@@ -294,15 +345,12 @@ U16 Minimax(Board *b, int cutoff)
     {
         for (auto m : moveset)
         {
-            Board *b_copy = b->copy();
-            b_copy->do_move(m);
-            // b->do_move(m);
-            float child = MaxVal(b_copy, alpha, beta, cutoff - 1);
+            do_move(b, m);
+            float child = MaxVal(b, alpha, beta, cutoff - 1);
             if (child < beta)
                 bestmove = m;
             beta = std::min(beta, child);
-            delete b_copy;
-            // undo_last_move(b, m);
+            undo_last_move(b, m);
         }
     }
     return bestmove;
