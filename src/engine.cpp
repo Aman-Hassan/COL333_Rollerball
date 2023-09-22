@@ -180,12 +180,12 @@ void print_moveset(std::unordered_set<U16> moveset)
 float MinVal(Board *b, float alpha, float beta, int cutoff)
 {
     auto moveset = b->get_legal_moves();
-    std::cout << "Entered New MinVal\n\nFor black, ";
-    print_moveset(moveset); // Print Moveset at beginning of node
+    // std::cout << "Entered New MinVal\n\nFor black, ";
+    // print_moveset(moveset); // Print Moveset at beginning of node
     if (cutoff == 0 || moveset.size() == 0)
     {
-        std::cout << "Reached cutoff/Moveset size 0, printing eval function: \n\n";
-        std::cout << all_boards_to_str(*b) << std::endl;
+        // std::cout << "Reached cutoff/Moveset size 0, printing eval function: \n\n";
+        // std::cout << all_boards_to_str(*b) << std::endl;
         return eval_fn(b);
     }
 
@@ -193,67 +193,66 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
     for (auto m : moveset)
     {
         Board *b_copy = b->copy();
-        print_state(b, m, cutoff); // Print the board state, moves taken till now, next move to take and current depth
+        // print_state(b, m, cutoff); // Print the board state, moves taken till now, next move to take and current depth
         b_copy->do_move(m);
         // b->do_move(m);
-        moves_taken.push_back(move_to_str(m));
+        // moves_taken.push_back(move_to_str(m));
         float child = MaxVal(b_copy, alpha, beta, cutoff - 1);
-        std::cout << "Back at MinVal, Returned Value from Maxval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
+        // std::cout << "Back at MinVal, Returned Value from Maxval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
         // print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
         beta = std::min(beta, child);
         min_val = std::min(min_val, child);
-        moves_taken.pop_back();
+        // moves_taken.pop_back();
         delete b_copy;
         // undo_last_move(b, m);
-        print_moveset(moveset);
+        // print_moveset(moveset);
         if (alpha >= beta)
         {
-            std::cout << "Pruned at depth " << global_cutoff - cutoff << "\n\n";
+            // std::cout << "Pruned at depth " << global_cutoff - cutoff << "\n\n";
             break;
         }
     }
-    std::cout << "Minval at depth " << global_cutoff - cutoff << "ended \n\n\n";
-    print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
+    // std::cout << "Minval at depth " << global_cutoff - cutoff << "ended \n\n\n";
+    // print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
     return min_val;
 }
 
 float MaxVal(Board *b, float alpha, float beta, int cutoff)
 {
     auto moveset = b->get_legal_moves();
-    std::cout << "Entered New MaxVal\n]nFor white, ";
-    print_moveset(moveset);
+    // std::cout << "Entered New MaxVal\n]nFor white, ";
+    // print_moveset(moveset);
     if (cutoff == 0 || moveset.size() == 0)
     {
-        std::cout << "Reached cutoff/Moveset size 0, printing eval function: \n\n";
-        std::cout << all_boards_to_str(*b) << std::endl;
+        // std::cout << "Reached cutoff/Moveset size 0, printing eval function: \n\n";
+        // std::cout << all_boards_to_str(*b) << std::endl;
         return eval_fn(b);
     }
     float max_val = std::numeric_limits<float>::lowest();
     for (auto m : moveset)
     {
         Board *b_copy = b->copy();
-        print_state(b, m, cutoff);
+        // print_state(b, m, cutoff);
         b_copy->do_move(m);
         // b->do_move(m);
-        moves_taken.push_back(move_to_str(m));
+        // moves_taken.push_back(move_to_str(m));
         float child = MinVal(b_copy, alpha, beta, cutoff - 1);
-        std::cout << "Back at MaxVal, Returned Value from Minval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
+        // std::cout << "Back at MaxVal, Returned Value from Minval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
         // print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
         alpha = std::max(alpha, child);
         max_val = std::max(max_val, child);
-        moves_taken.pop_back();
+        // moves_taken.pop_back();
         delete b_copy;
         // undo_last_move(b, m);
-        print_moveset(moveset);
+        // print_moveset(moveset);
         if (alpha >= beta)
         {
-            std::cout << "Pruned at depth " << global_cutoff - cutoff << "\n\n\n";
+            // std::cout << "Pruned at depth " << global_cutoff - cutoff << "\n\n\n";
             break;
         }
     }
-    std::cout << "Maxval at depth " << global_cutoff - cutoff << "ended"
-              << "\n\n";
-    print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
+    // std::cout << "Maxval at depth " << global_cutoff - cutoff << "ended" << "\n\n";
+    // print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
     return max_val;
 }
 
@@ -293,7 +292,7 @@ U16 bestmove = 0;
 U16 Minimax(Board *b, int cutoff)
 {
     auto moveset = b->get_legal_moves();
-    std::cout << "\n\nStarting new Minimax\n";
+    // std::cout << "\n\nStarting new Minimax\n";
     print_moveset(moveset);
     U16 bestmove = 0;
 
@@ -304,18 +303,18 @@ U16 Minimax(Board *b, int cutoff)
         for (auto m : moveset)
         {
             Board *b_copy = b->copy();
-            std::cout << "Back at Minimax" << std::endl;
-            print_state(b, m, cutoff);
+            // std::cout << "Back at Minimax" << std::endl;
+            // print_state(b, m, cutoff);
             b_copy->do_move(m);
             // b->do_move(m);
-            moves_taken.push_back(move_to_str(m));
+            // moves_taken.push_back(move_to_str(m));
             float child = MinVal(b_copy, alpha, beta, cutoff - 1);
             if (child > alpha)
                 bestmove = m;
             alpha = std::max(alpha, child);
             delete b_copy;
             // undo_last_move(b, m);
-            moves_taken.pop_back();
+            // moves_taken.pop_back();
             // if (alpha == child)
             //     bestmove = m;
             // if (alpha >= beta)
@@ -343,7 +342,7 @@ U16 Minimax(Board *b, int cutoff)
             // commented the above because at the start alpha is always -inf
         }
     }
-    std::cout << "MiniMax Ended" << std::endl;
+    // std::cout << "MiniMax Ended" << std::endl;
     return bestmove;
 }
 
@@ -359,7 +358,7 @@ void Engine::find_best_move(const Board &b)
     }
     else
     {
-        std::cout << "\n\n\n\n\n\n\nStart find_best_move()\nBoard state:\n";
+        // std::cout << "\n\n\n\n\n\n\nStart find_best_move()\nBoard state:\n";
         std::cout << all_boards_to_str(b) << "\n Legal moves:" << std::endl;
         for (auto m : moveset)
         {
