@@ -12,7 +12,7 @@
 typedef uint8_t U8;
 typedef uint16_t U16;
 
-int global_cutoff = 3;
+int global_cutoff = 4;
 std::vector<std::string> moves_taken;
 std::vector<U8> last_killed_pieces;
 std::vector<int> last_killed_pieces_idx;
@@ -169,14 +169,23 @@ void undo_last_move(Board *b, U16 move)
 float material_check(Board *b)
 {
     float val = 0;
-    float weight_arr[12] = {8, 8, 0, 4, 2, 2, 8, 8, 0, 4, 2, 2};
+    // float weight_arr[12] = {8, 8, 0, 4, 2, 2, 8, 8, 0, 4, 2, 2};
+    float p = 2, bi = 4, r = 8;
     U8 *pieces = (U8 *)(&(b->data));
     for (int i = 0; i < 12; i++)
     {
+        int temp = 0;
         if (pieces[i] != DEAD)
         {
-            val += ((int(i >= 6) - int(i < 6))) * weight_arr[i];
+            // val += (((int(i >= 6) - int(i < 6))) * weight_arr[i])* (pieces[i] != DEAD);
+
+            U8 piecetype = b->data.board_0[pieces[i]];
+            temp += ((piecetype & PAWN) == PAWN) * p;
+            temp += ((piecetype & BISHOP) == BISHOP) * bi;
+            temp += ((piecetype & ROOK) == ROOK) * r;
+            temp *= std::pow(-1, (piecetype & BLACK) == BLACK);
         }
+        val += temp;
     }
     return val;
 }
@@ -207,9 +216,14 @@ float rook_distance(Board *b, int w)
     std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
 
     U8 *pieces = (U8 *)(&(b->data));
-    int ids[4] = {0, 1, 6, 7};
-    for (int i = 0; i < 4; i++)
+
+    int ids[8] = {0, 1, 4, 5, 6, 7, 10, 11}; // iterate through rooks and pawns(maybe upgraded)
+    for (int i = 0; i < 8; i++)
     {
+        U8 piecetype = b->data.board_0[pieces[i]];
+
+        if (pieces[ids[i]] == DEAD || (piecetype & ROOK) != ROOK)
+            continue;
         U8 rook_pos = pieces[ids[i]];
         U8 king_pos = pieces[(i > 5) * 2 + (i < 2) * 8];
         std::bitset<4> rook_arr;
@@ -222,6 +236,8 @@ float rook_distance(Board *b, int w)
         king_arr[1] = left.count(king_pos);
         king_arr[2] = top.count(king_pos);
         king_arr[3] = right.count(king_pos);
+
+        // std::cout << "rook:" << rook_arr.to_ulong() << "king:" << king_arr.to_ulong() << "\n";
 
         int dist = 4 - (int)std::log2((rook_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
         val += dist * w;
