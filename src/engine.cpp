@@ -3,6 +3,7 @@
 #include <iostream>
 #include <limits>
 #include <chrono>
+#include <bitset>
 
 #include "board.hpp"
 #include "engine.hpp"
@@ -10,7 +11,7 @@
 typedef uint8_t U8;
 typedef uint16_t U16;
 
-int global_cutoff = 5;
+int global_cutoff = 3;
 std::vector<std::string> moves_taken;
 
 float MinVal(Board *b, float alpha, float beta, int cutoff);
@@ -104,7 +105,7 @@ void undo_last_move(Board *b, U16 move)
 }
 
 // No of white - No of black
-float material_check(const Board *b)
+float material_check(Board *b)
 {
     float val = 0;
     float weight_arr[12] = {8, 8, 0, 4, 2, 2, 8, 8, 0, 4, 2, 2};
@@ -119,7 +120,7 @@ float material_check(const Board *b)
     return val;
 }
 
-float check_condition(const Board *b)
+float check_condition(Board *b)
 {
     //
     float val = 0;
@@ -136,7 +137,22 @@ float check_condition(const Board *b)
     return val;
 }
 
-float eval_fn(const Board *b)
+float rook_distance(Board *b)
+{
+    std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
+    std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
+    std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
+    std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+
+    U8 rook_pos = 0;
+    U8 king_pos = 0;
+    std::bitset<4> rook_arr;
+    rook_arr[0] = bottom.count(rook_pos);
+    rook_arr[1] = left.count(rook_pos);
+    rook_arr[2] = top.count(rook_pos);
+    rook_arr[3] = right.count(rook_pos);
+}
+float eval_fn(Board *b)
 {
     float final_val = 0;
     final_val += material_check(b);
@@ -185,11 +201,12 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
     {
         Board *b_copy = b->copy();
         b_copy->do_move(m);
-        moves_taken.push_back(move_to_str(m));
+        // b->do_move(m);
+        // moves_taken.push_back(move_to_str(m));
         float child = MaxVal(b_copy, alpha, beta, cutoff - 1);
         beta = std::min(beta, child);
         min_val = std::min(min_val, child);
-        moves_taken.pop_back();
+        // moves_taken.pop_back();
         delete b_copy;
         // undo_last_move(b, m);
         if (alpha >= beta)
@@ -212,11 +229,12 @@ float MaxVal(Board *b, float alpha, float beta, int cutoff)
     {
         Board *b_copy = b->copy();
         b_copy->do_move(m);
-        moves_taken.push_back(move_to_str(m));
+        // b->do_move(m);
+        // moves_taken.push_back(move_to_str(m));
         float child = MinVal(b_copy, alpha, beta, cutoff - 1);
         alpha = std::max(alpha, child);
         max_val = std::max(max_val, child);
-        moves_taken.pop_back();
+        // moves_taken.pop_back();
         delete b_copy;
         // undo_last_move(b, m);
         if (alpha >= beta)
@@ -227,36 +245,7 @@ float MaxVal(Board *b, float alpha, float beta, int cutoff)
     return max_val;
 }
 
-// U16 Minimax2(Board *b, int cutoff, float alpha, float beta, bool maximising)
-// {
-//     auto moveset = b->get_legal_moves();
-//     std::cout << "Starting new Minimax\n";
-//     print_moveset(moveset);
-//     if (maximising)
-//     {
-//         float maxval = std::numeric_limits<float>::lowest();
-//         U16 bestmove = 0;
-//         for (auto m : moveset)
-//         {
-//             std::cout << "Back at Minimax" << std::endl;
-//             b->do_move(m);
-//             moves_taken.push_back(move_to_str(m));
-//             print_state(b, m, cutoff);
-//             float child = Minimax2(b, cutoff - 1, alpha, beta, false);
-//             if (child > bestmove)
-//                 maxval = child;
-//             bestmove = m;
-//             alpha = std::max(alpha, child);
-//             undo_last_move(b, m);
-//             moves_taken.pop_back();
-//             // if (alpha == child)
-//             //     bestmove = m;
-//             if (alpha >= beta)
-//                 return bestmove;
-//             // commented the above because at the start beta is always +inf
-//         }
-//     }
-// }
+// U16 bestmove = 0;
 
 U16 Minimax(Board *b, int cutoff)
 {
@@ -272,7 +261,8 @@ U16 Minimax(Board *b, int cutoff)
         {
             Board *b_copy = b->copy();
             b_copy->do_move(m);
-            moves_taken.push_back(move_to_str(m));
+            // b->do_move(m);
+            // moves_taken.push_back(move_to_str(m));
             float child = MinVal(b_copy, alpha, beta, cutoff - 1);
             if (child > alpha)
                 bestmove = m;
@@ -288,6 +278,7 @@ U16 Minimax(Board *b, int cutoff)
         {
             Board *b_copy = b->copy();
             b_copy->do_move(m);
+            // b->do_move(m);
             float child = MaxVal(b_copy, alpha, beta, cutoff - 1);
             if (child < beta)
                 bestmove = m;
@@ -311,7 +302,7 @@ void Engine::find_best_move(const Board &b)
     }
     else
     {
-        std::cout << "\n\n\n\n\n\n\nStart find_best_move()\nBoard state:\n";
+        // std::cout << "\n\n\n\n\n\n\nStart find_best_move()\nBoard state:\n";
         std::cout << all_boards_to_str(b) << "\n Legal moves:" << std::endl;
         for (auto m : moveset)
         {
