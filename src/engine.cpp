@@ -9,7 +9,7 @@
 typedef uint8_t U8;
 typedef uint16_t U16;
 
-int global_cutoff = 4;
+int global_cutoff = 6;
 std::vector<std::string> moves_taken;
 
 float MinVal(Board *b, float alpha, float beta, int cutoff);
@@ -113,14 +113,14 @@ float material_check(const Board *b)
     U8 *pieces = (U8 *)(&(b->data));
     for (int i = 0; i < 12; i++)
     {
-        std::cout << "checking " << piece_to_char(b->data.board_0[pieces[i]]) << " weight " << weight_arr[i] << "\n";
+        // std::cout << "checking " << piece_to_char(b->data.board_0[pieces[i]]) << " weight " << weight_arr[i] << "\n";
         if (pieces[i] != DEAD)
         {
             val += ((int(i >= 6) - int(i < 6))) * weight_arr[i];
-            std::cout << "value obtained till now " << val << "\n";
+            // std::cout << "value obtained till now " << val << "\n";
         }
     }
-    std::cout << std::endl;
+    // std::cout << std::endl;
     return val;
 }
 
@@ -256,38 +256,7 @@ float MaxVal(Board *b, float alpha, float beta, int cutoff)
     return max_val;
 }
 
-U16 bestmove = 0;
-
-// U16 Minimax2(Board *b, int cutoff, float alpha, float beta, bool maximising)
-// {
-//     auto moveset = b->get_legal_moves();
-//     std::cout << "Starting new Minimax\n";
-//     print_moveset(moveset);
-//     if (maximising)
-//     {
-//         float maxval = std::numeric_limits<float>::lowest();
-//         U16 bestmove = 0;
-//         for (auto m : moveset)
-//         {
-//             std::cout << "Back at Minimax" << std::endl;
-//             b->do_move(m);
-//             moves_taken.push_back(move_to_str(m));
-//             print_state(b, m, cutoff);
-//             float child = Minimax2(b, cutoff - 1, alpha, beta, false);
-//             if (child > bestmove)
-//                 maxval = child;
-//             bestmove = m;
-//             alpha = std::max(alpha, child);
-//             undo_last_move(b, m);
-//             moves_taken.pop_back();
-//             // if (alpha == child)
-//             //     bestmove = m;
-//             if (alpha >= beta)
-//                 return bestmove;
-//             // commented the above because at the start beta is always +inf
-//         }
-//     }
-// }
+// U16 bestmove = 0;
 
 U16 Minimax(Board *b, int cutoff)
 {
