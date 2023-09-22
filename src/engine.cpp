@@ -249,23 +249,16 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
     float min_val = std::numeric_limits<float>::max();
     for (auto m : moveset)
     {
-        Board *b_copy = b->copy();
         print_state(b, m, cutoff); // Print the board state, moves taken till now, next move to take and current depth
-<<<<<<< HEAD
         do_move(b, m);
-=======
-        b_copy->do_move(m);
-        // b->do_move(m);
->>>>>>> 5831d3cd5d61a51f72d9c930b5bb975a7a24566d
         moves_taken.push_back(move_to_str(m));
-        float child = MaxVal(b_copy, alpha, beta, cutoff - 1);
+        float child = MaxVal(b, alpha, beta, cutoff - 1);
         std::cout << "Back at MinVal, Returned Value from Maxval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
         // print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
         beta = std::min(beta, child);
         min_val = std::min(min_val, child);
         moves_taken.pop_back();
-        delete b_copy;
-        // undo_last_move(b, m);
+        undo_last_move(b, m);
         print_moveset(moveset);
         if (alpha >= beta)
         {
@@ -292,23 +285,16 @@ float MaxVal(Board *b, float alpha, float beta, int cutoff)
     float max_val = std::numeric_limits<float>::lowest();
     for (auto m : moveset)
     {
-        Board *b_copy = b->copy();
         print_state(b, m, cutoff);
-<<<<<<< HEAD
         do_move(b, m);
-=======
-        b_copy->do_move(m);
-        // b->do_move(m);
->>>>>>> 5831d3cd5d61a51f72d9c930b5bb975a7a24566d
         moves_taken.push_back(move_to_str(m));
-        float child = MinVal(b_copy, alpha, beta, cutoff - 1);
+        float child = MinVal(b, alpha, beta, cutoff - 1);
         std::cout << "Back at MaxVal, Returned Value from Minval at depth " << global_cutoff + 1 - cutoff << ":" << child << std::endl;
         // print_state(b, 0, cutoff); // Print the board state, moves taken till now, next move to take and current depth
         alpha = std::max(alpha, child);
         max_val = std::max(max_val, child);
         moves_taken.pop_back();
-        delete b_copy;
-        // undo_last_move(b, m);
+        undo_last_move(b, m);
         print_moveset(moveset);
         if (alpha >= beta)
         {
@@ -337,22 +323,15 @@ U16 Minimax(Board *b, int cutoff)
     {
         for (auto m : moveset)
         {
-            Board *b_copy = b->copy();
             std::cout << "Back at Minimax" << std::endl;
             print_state(b, m, cutoff);
-<<<<<<< HEAD
             do_move(b, m);
-=======
-            b_copy->do_move(m);
-            // b->do_move(m);
->>>>>>> 5831d3cd5d61a51f72d9c930b5bb975a7a24566d
             moves_taken.push_back(move_to_str(m));
-            float child = MinVal(b_copy, alpha, beta, cutoff - 1);
+            float child = MinVal(b, alpha, beta, cutoff - 1);
             if (child > alpha)
                 bestmove = m;
             alpha = std::max(alpha, child);
-            delete b_copy;
-            // undo_last_move(b, m);
+            undo_last_move(b, m);
             moves_taken.pop_back();
             // if (alpha == child)
             //     bestmove = m;
@@ -365,20 +344,12 @@ U16 Minimax(Board *b, int cutoff)
     {
         for (auto m : moveset)
         {
-<<<<<<< HEAD
             do_move(b, m);
             float child = MaxVal(b, alpha, beta, cutoff - 1);
-=======
-            Board *b_copy = b->copy();
-            b_copy->do_move(m);
-            // b->do_move(m);
-            float child = MaxVal(b_copy, alpha, beta, cutoff - 1);
->>>>>>> 5831d3cd5d61a51f72d9c930b5bb975a7a24566d
             if (child < beta)
                 bestmove = m;
             beta = std::min(beta, child);
-            delete b_copy;
-            // undo_last_move(b, m);
+            undo_last_move(b, m);
             // if (beta == child)
             //     bestmove = m;
             // if (alpha >= beta)
