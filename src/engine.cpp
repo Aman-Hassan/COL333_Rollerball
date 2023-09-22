@@ -3,6 +3,8 @@
 #include <iostream>
 #include <limits>
 #include <chrono>
+#include <bitset>
+#include <math.h>
 
 #include "board.hpp"
 #include "engine.hpp"
@@ -136,11 +138,43 @@ float check_condition(Board *b)
     return val;
 }
 
+float rook_distance(Board *b, int w)
+{
+    int val = 0;
+    std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
+    std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
+    std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
+    std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+
+    U8 *pieces = (U8 *)(&(b->data));
+    int ids[4] = {0, 1, 6, 7};
+    for (int i = 0; i < 4; i++)
+    {
+        U8 rook_pos = pieces[ids[i]];
+        U8 king_pos = pieces[(i > 5) * 2 + (i < 2) * 8];
+        std::bitset<4> rook_arr;
+        rook_arr[0] = bottom.count(rook_pos);
+        rook_arr[1] = left.count(rook_pos);
+        rook_arr[2] = top.count(rook_pos);
+        rook_arr[3] = right.count(rook_pos);
+        std::bitset<4> king_arr;
+        king_arr[0] = bottom.count(king_pos);
+        king_arr[1] = left.count(king_pos);
+        king_arr[2] = top.count(king_pos);
+        king_arr[3] = right.count(king_pos);
+
+        int dist = 4 - (int)std::log2((rook_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
+        val += dist * w;
+    }
+    return val;
+}
+
 float eval_fn(Board *b)
 {
     float final_val = 0;
     final_val += material_check(b);
     final_val += check_condition(b);
+    final_val += rook_distance(b, 1);
     return final_val;
 }
 
