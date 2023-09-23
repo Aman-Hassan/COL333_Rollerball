@@ -1,0 +1,100 @@
+brian@Brian-HP:/mnt/c/Users/brian/Code/COL333_Rollerball$ ./bin/rollerball_random -p 8182
+[2023-09-21 23:56:50] [connect] WebSocket Connection [::1]:41848 v13 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36" / 101
+Connection opened.
+There are now 1 open connections.
+In method on_uci
+[2023-09-21 23:56:50] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 5 payload bytes
+[2023-09-21 23:56:50] [frame_header] Header Bytes: 
+[0] (2) 81 05 
+
+[2023-09-21 23:56:50] [frame_payload] Payload Bytes: 
+[0] (5) [1] uciok
+
+In method on_isready
+[2023-09-21 23:56:54] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 7 payload bytes
+[2023-09-21 23:56:54] [frame_header] Header Bytes: 
+[0] (2) 81 07 
+
+[2023-09-21 23:56:54] [frame_payload] Payload Bytes: 
+[0] (7) [1] readyok
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:57:04] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:57:04] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:57:04] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove c7b7
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:57:14] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:57:14] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:57:14] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove b7c7
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:57:24] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:57:24] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:57:24] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove c6b6
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:57:34] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:57:34] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:57:34] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove e6f6
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:57:44] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:57:44] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:57:44] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove b6c6
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:57:54] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:57:54] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:57:54] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove d7e6
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:58:04] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:58:04] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:58:04] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove e7f7
+
+In method on_position
+In method on_go
+In method on_stop
+[2023-09-21 23:58:14] [frame_header] Dispatching write containing 1 message(s) containing 2 header bytes and 13 payload bytes
+[2023-09-21 23:58:14] [frame_header] Header Bytes: 
+[0] (2) 81 0D 
+
+[2023-09-21 23:58:14] [frame_payload] Payload Bytes: 
+[0] (13) [1] bestmove f6g5
+

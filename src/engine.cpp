@@ -86,13 +86,16 @@ void do_move(Board *b, U16 move)
         }
     }
 
+    last_killed_pieces.pop_back();
+    last_killed_pieces_idx.pop_back();
+
     if (promo == PAWN_ROOK)
     {
-        piecetype = (piecetype & (WHITE | BLACK)) | ROOK;
+        piecetype = ((piecetype & (WHITE | BLACK)) ^ ROOK) | PAWN;
     }
     else if (promo == PAWN_BISHOP)
     {
-        piecetype = (piecetype & (WHITE | BLACK)) | BISHOP;
+        piecetype = ((piecetype & (WHITE | BLACK)) ^ BISHOP) | PAWN;
     }
 
     b->data.board_0[p1] = piecetype;
@@ -311,7 +314,7 @@ float eval_fn(Board *b)
 {
     float final_val = 0;
     final_val += 10 * material_check(b);
-    final_val += 5 * check_condition(b);
+    final_val += 3 * check_condition(b);
     final_val += 0.01 * pawn_distance(b);
     final_val += 0.02 * rook_distance(b);
     return final_val;
@@ -345,7 +348,9 @@ void print_moveset(std::unordered_set<U16> moveset)
     std::cout << std::endl;
 }
 
-float MinVal(Board *b, float alpha, float beta, int cutoff)
+U16 best_move_obtained = 0;
+
+float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximizing)
 {
     if (cutoff == 0)
         return eval_fn(b);
@@ -353,87 +358,48 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
     if (moveset.size() == 0)
         return eval_fn(b);
 
-    float min_val = std::numeric_limits<float>::max();
-    for (auto m : moveset)
+    if (Maximizing)
     {
-        do_move(b, m);
-        // moves_taken.push_back(move_to_str(m));
-        float child = MaxVal(b, alpha, beta, cutoff - 1);
-        beta = std::min(beta, child);
-        min_val = std::min(min_val, child);
-        // moves_taken.pop_back();
-        undo_last_move(b, m);
-        if (alpha >= beta)
-        {
-            break;
-        }
-    }
-    return min_val;
-}
-
-float MaxVal(Board *b, float alpha, float beta, int cutoff)
-{
-    if (cutoff == 0)
-        return eval_fn(b);
-    auto moveset = b->get_legal_moves();
-    if (moveset.size() == 0)
-        return eval_fn(b);
-
-    float max_val = std::numeric_limits<float>::lowest();
-    for (auto m : moveset)
-    {
-        do_move(b, m);
-        // moves_taken.push_back(move_to_str(m));
-        float child = MinVal(b, alpha, beta, cutoff - 1);
-        alpha = std::max(alpha, child);
-        max_val = std::max(max_val, child);
-        // moves_taken.pop_back();
-        undo_last_move(b, m);
-        if (alpha >= beta)
-        {
-            break;
-        }
-    }
-    return max_val;
-}
-
-// U16 bestmove = 0;
-
-U16 Minimax(Board *b, int cutoff)
-{
-    auto moveset = b->get_legal_moves();
-    print_moveset(moveset);
-    U16 bestmove = 0;
-
-    float alpha = std::numeric_limits<float>::lowest(); // ::min() would only give least positive float instead of smallest float
-    float beta = std::numeric_limits<float>::max();
-    if (b->data.player_to_play == WHITE) // Runs maxval if white
-    {
+        float max_eval = std::numeric_limits<float>::lowest();
         for (auto m : moveset)
         {
             do_move(b, m);
-            // moves_taken.push_back(move_to_str(m));
-            float child = MinVal(b, alpha, beta, cutoff - 1);
-            if (child > alpha)
-                bestmove = m;
-            alpha = std::max(alpha, child);
+            float eval = unified_minimax(b, cutoff - 1, alpha, beta, false);
             undo_last_move(b, m);
-            // moves_taken.pop_back();
+            max_eval = std::max(max_eval, eval);
+            if (cutoff == global_cutoff && eval > alpha)
+            {
+                best_move_obtained = m;
+            }
+            alpha = std::max(alpha, eval);
+            if (alpha >= beta)
+            {
+                break;
+            }
         }
+        return max_eval;
     }
     else
     {
+        float min_eval = std::numeric_limits<float>::max();
         for (auto m : moveset)
         {
             do_move(b, m);
-            float child = MaxVal(b, alpha, beta, cutoff - 1);
-            if (child < beta)
-                bestmove = m;
-            beta = std::min(beta, child);
+            float eval = unified_minimax(b, cutoff - 1, alpha, beta, true);
             undo_last_move(b, m);
+            min_eval = std::min(min_eval, eval);
+            if (cutoff == global_cutoff && eval < beta)
+            {
+                best_move_obtained = m;
+            }
+            beta = std::min(beta, eval);
+            if (alpha >= beta)
+            {
+                break;
+            }
         }
+        return min_eval;
     }
-    return bestmove;
 }
 
 void Engine::find_best_move(const Board &b)
@@ -458,13 +424,13 @@ void Engine::find_best_move(const Board &b)
         Board *b_copy = b.copy();
 
         auto start = std::chrono::high_resolution_clock::now();
-        U16 bestmove = Minimax(b_copy, global_cutoff);
+        unified_minimax(b_copy, global_cutoff, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), b.data.player_to_play == WHITE);
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
         if (duration.count() < 2000)
-            this->best_move = bestmove;
-        std::cout << "Best move chosen:" << move_to_str(bestmove) << std::endl;
+            this->best_move = best_move_obtained;
+        std::cout << "Best move chosen:" << move_to_str(best_move_obtained) << std::endl;
         delete b_copy;
     }
 }
