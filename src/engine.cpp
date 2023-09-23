@@ -207,14 +207,67 @@ float check_condition(Board *b)
     return val;
 }
 
-float rook_distance(Board *b, int w)
+float pawn_distance(Board *b)
 {
-    int val = 0;
+    float val = 0;
+    // the below are the proper non-overlapping sector regions.
     std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
     std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
     std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
     std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+    U8 corners[4] = {pos(5, 1), pos(1, 1), pos(1, 5), pos(5, 5)};
+    U8 *pieces = (U8 *)(&(b->data));
 
+    int ids[4] = {4, 5, 10, 11};
+    for (int i = 0; i < 4; i++) // for each piece
+    {
+        std::bitset<4> piece_arr;
+        std::bitset<4> king_arr;
+        U8 piece_pos = pieces[ids[i]];
+        U8 king_pos = pieces[(i > 5) * 2 + (i <= 5) * 8];
+        U8 piecetype = b->data.board_0[piece_pos];
+
+        if (piece_pos == DEAD || (piecetype & PAWN) != PAWN)
+            continue;
+        piece_arr[0] = bottom.count(piece_pos);
+        piece_arr[1] = left.count(piece_pos);
+        piece_arr[2] = top.count(piece_pos);
+        piece_arr[3] = right.count(piece_pos);
+        king_arr[0] = bottom.count(king_pos);
+        king_arr[1] = left.count(king_pos);
+        king_arr[2] = top.count(king_pos);
+        king_arr[3] = right.count(king_pos);
+        int sector_dist = 4 - (int)std::log2((piece_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
+        int piece_c = 0;
+        int king_c = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            piece_c += (int)piece_arr[i] * corners[i];
+            king_c += (int)king_arr[i] * corners[i];
+        }
+        int piece_dist = std::abs(getx(piece_pos) - getx(piece_c)) + std::abs(gety(piece_pos) - gety(piece_c));
+        int king_dist = std::abs(getx(king_pos) - getx(king_c)) + std::abs(gety(king_pos) - gety(king_c));
+        int diff = king_dist - piece_dist;
+        if (diff < 0)
+            diff += 40;
+        int total_dist = diff + 4 * sector_dist;
+        val -= total_dist * std::pow(-1, (piecetype & BLACK) == BLACK);
+    }
+    return val;
+}
+
+float rook_distance(Board *b)
+{
+    float val = 0;
+    // std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
+    // std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
+    // std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
+    // std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+
+    std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
+    std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
+    std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
+    std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
     U8 *pieces = (U8 *)(&(b->data));
 
     int ids[8] = {0, 1, 4, 5, 6, 7, 10, 11}; // iterate through rooks and pawns(maybe upgraded)
@@ -239,8 +292,8 @@ float rook_distance(Board *b, int w)
 
         // std::cout << "rook:" << rook_arr.to_ulong() << "king:" << king_arr.to_ulong() << "\n";
 
-        int dist = 4 - (int)std::log2((rook_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
-        val += dist * w;
+        float dist = 4 - (int)std::log2((rook_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
+        val += dist;
     }
     return val;
 }
@@ -248,9 +301,10 @@ float rook_distance(Board *b, int w)
 float eval_fn(Board *b)
 {
     float final_val = 0;
-    final_val += material_check(b);
+    final_val += 10 * material_check(b);
     final_val += check_condition(b);
-    final_val += rook_distance(b, 1);
+    final_val += 0.01 * pawn_distance(b);
+    // final_val += rook_distance(b);
     return final_val;
 }
 
