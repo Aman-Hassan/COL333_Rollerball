@@ -237,7 +237,7 @@ float pawn_distance(Board *b)
         king_arr[1] = left.count(king_pos);
         king_arr[2] = top.count(king_pos);
         king_arr[3] = right.count(king_pos);
-        int sector_dist = 4 - (int)std::log2((piece_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
+        int sector_dist = (int)std::log2((piece_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
         int piece_c = 0;
         int king_c = 0;
         for (int i = 0; i < 4; i++)
@@ -264,36 +264,45 @@ float rook_distance(Board *b)
     // std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
     // std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
 
-    std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
-    std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
-    std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
-    std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+    std::unordered_set<U8> bottom_r({2, 3, 4, 5, 6, 10, 11, 12, 13, 14});
+    std::unordered_set<U8> left_r({0, 1, 8, 9, 16, 24, 32, 17, 25, 33});
+    std::unordered_set<U8> top_r({50, 51, 52, 42, 43, 44, 40, 41, 48, 49});
+    std::unordered_set<U8> right_r({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+
+    std::unordered_set<U8> bottom_l({0, 1, 8, 9, 2, 3, 4, 10, 11, 12});
+    std::unordered_set<U8> left_l({40, 41, 48, 49, 16, 24, 32, 17, 25, 33});
+    std::unordered_set<U8> top_l({45, 46, 53, 54, 50, 51, 52, 42, 43, 44});
+    std::unordered_set<U8> right_l({5, 6, 13, 14, 38, 30, 22, 37, 29, 21});
     U8 *pieces = (U8 *)(&(b->data));
 
     int ids[8] = {0, 1, 4, 5, 6, 7, 10, 11}; // iterate through rooks and pawns(maybe upgraded)
     for (int i = 0; i < 8; i++)
     {
-        U8 piecetype = b->data.board_0[pieces[i]];
-
-        if (pieces[ids[i]] == DEAD || (piecetype & ROOK) != ROOK)
-            continue;
-        U8 rook_pos = pieces[ids[i]];
-        U8 king_pos = pieces[(i > 5) * 2 + (i < 2) * 8];
-        std::bitset<4> rook_arr;
-        rook_arr[0] = bottom.count(rook_pos);
-        rook_arr[1] = left.count(rook_pos);
-        rook_arr[2] = top.count(rook_pos);
-        rook_arr[3] = right.count(rook_pos);
+        std::bitset<4> piece_arr;
         std::bitset<4> king_arr;
-        king_arr[0] = bottom.count(king_pos);
-        king_arr[1] = left.count(king_pos);
-        king_arr[2] = top.count(king_pos);
-        king_arr[3] = right.count(king_pos);
+        U8 piece_pos = pieces[ids[i]];
+        U8 king_pos = pieces[(i > 5) * 2 + (i <= 5) * 8];
+        U8 piecetype = b->data.board_0[piece_pos];
+
+        if (piece_pos == DEAD || (piecetype & ROOK) != ROOK)
+            continue;
+        piece_arr[0] = bottom_r.count(piece_pos);
+        piece_arr[1] = left_r.count(piece_pos);
+        piece_arr[2] = top_r.count(piece_pos);
+        piece_arr[3] = right_r.count(piece_pos);
+        king_arr[0] = bottom_l.count(king_pos);
+        king_arr[1] = left_l.count(king_pos);
+        king_arr[2] = top_l.count(king_pos);
+        king_arr[3] = right_l.count(king_pos);
+        int sector_dist = 0;
+        if ((piece_arr.to_ulong() & piece_arr.to_ulong()) > 0)
+            sector_dist = 5;
+        else
+            sector_dist = (int)std::log2((piece_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4; // 0 to 3
 
         // std::cout << "rook:" << rook_arr.to_ulong() << "king:" << king_arr.to_ulong() << "\n";
 
-        float dist = 4 - (int)std::log2((rook_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
-        val += dist;
+        val -= 8 * sector_dist * std::pow(-1, (piecetype & BLACK) == BLACK);
     }
     return val;
 }
@@ -302,9 +311,9 @@ float eval_fn(Board *b)
 {
     float final_val = 0;
     final_val += 10 * material_check(b);
-    final_val += check_condition(b);
+    final_val += 5 * check_condition(b);
     final_val += 0.01 * pawn_distance(b);
-    // final_val += rook_distance(b);
+    final_val += 0.02 * rook_distance(b);
     return final_val;
 }
 
@@ -338,11 +347,11 @@ void print_moveset(std::unordered_set<U16> moveset)
 
 float MinVal(Board *b, float alpha, float beta, int cutoff)
 {
-    auto moveset = b->get_legal_moves();
-    if (cutoff == 0 || moveset.size() == 0)
-    {
+    if (cutoff == 0)
         return eval_fn(b);
-    }
+    auto moveset = b->get_legal_moves();
+    if (moveset.size() == 0)
+        return eval_fn(b);
 
     float min_val = std::numeric_limits<float>::max();
     for (auto m : moveset)
@@ -364,11 +373,12 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
 
 float MaxVal(Board *b, float alpha, float beta, int cutoff)
 {
-    auto moveset = b->get_legal_moves();
-    if (cutoff == 0 || moveset.size() == 0)
-    {
+    if (cutoff == 0)
         return eval_fn(b);
-    }
+    auto moveset = b->get_legal_moves();
+    if (moveset.size() == 0)
+        return eval_fn(b);
+
     float max_val = std::numeric_limits<float>::lowest();
     for (auto m : moveset)
     {
