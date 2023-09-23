@@ -341,7 +341,7 @@ U16 best_move_obtained = 0;
 float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximizing)
 {
     std::unordered_set<U16> moveset = b->get_legal_moves();
-
+    // bool is_sorted = false;
     if (cutoff == 0 || moveset.size() == 0)
     {
         return eval_fn(b);
@@ -350,6 +350,8 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     // Ordering the values using lambda function:
     std::vector<U16> ordered_moveset(moveset.begin(), moveset.end());
 
+    // if (cutoff < 4)
+    // {
     auto order_moves = [b](U16 move1, U16 move2)
     {
         do_move(b, move1);
@@ -364,11 +366,13 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     };
 
     std::sort(ordered_moveset.begin(), ordered_moveset.end(), order_moves); // Sorted in descending order
+    //     is_sorted = true;
+    // }
 
     // print_moveset(moveset);
-    std::cout << "\nOrdered Moveset->\n\n";
-    print_moveset(ordered_moveset);
-    std::cout << "\n";
+    // std::cout << "\nOrdered Moveset->\n\n";
+    // print_moveset(ordered_moveset);
+    // std::cout << "\n";
 
     if (Maximizing)
     {
@@ -394,7 +398,12 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     }
     else
     {
+
+        // if (is_sorted)
+        // {
         std::reverse(ordered_moveset.begin(), ordered_moveset.end());
+        // }
+
         float min_eval = std::numeric_limits<float>::max();
         for (auto m : ordered_moveset)
         {
