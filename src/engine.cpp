@@ -164,22 +164,30 @@ void undo_last_move(Board *b, U16 move)
 }
 
 // No of white - No of black
-float material_check(const Board *b)
+float material_check(Board *b)
 {
     float val = 0;
-    float weight_arr[12] = {8, 8, 0, 4, 2, 2, 8, 8, 0, 4, 2, 2};
+    float p = 2, bi = 4, r = 8;
     U8 *pieces = (U8 *)(&(b->data));
     for (int i = 0; i < 12; i++)
     {
+        int temp = 0;
         if (pieces[i] != DEAD)
         {
-            val += ((int(i >= 6) - int(i < 6))) * weight_arr[i];
+            // val += (((int(i >= 6) - int(i < 6))) * weight_arr[i])* (pieces[i] != DEAD);
+
+            U8 piecetype = b->data.board_0[pieces[i]];
+            temp += ((piecetype & PAWN) == PAWN) * p;
+            temp += ((piecetype & BISHOP) == BISHOP) * bi;
+            temp += ((piecetype & ROOK) == ROOK) * r;
+            temp *= std::pow(-1, (piecetype & BLACK) == BLACK);
         }
+        val += temp;
     }
     return val;
 }
 
-float check_condition(const Board *b)
+float check_condition(Board *b)
 {
     //
     float val = 0;
@@ -187,7 +195,7 @@ float check_condition(const Board *b)
     if (b->in_check())
     {
         // if white is in check, bad, negative
-        val = 5 * std::pow(-1, int(player));
+        val = 10 * std::pow(-1, int(player));
         if (b->get_legal_moves().size() == 0) // if you're checkmated
         {
             val += 500 * std::pow(-1, int(player));
@@ -196,11 +204,59 @@ float check_condition(const Board *b)
     return val;
 }
 
-float eval_fn(const Board *b)
+// Calculates how ranges covered + threats given
+float range_and_threats(Board *b, std::unordered_set<U16> moves, float range_weight, float threat_weight)
+{
+    bool player = (b->data.player_to_play == WHITE);
+    float val = 0;
+    float p = 2, bi = 4, r = 6;
+    U8 *pieces = (U8 *)(&(b->data));
+
+    b->data.player_to_play = (PlayerColor)(b->data.player_to_play ^ (WHITE | BLACK)); // flipping player
+    std::unordered_set<U16> moves_flip = b->get_legal_moves();
+    b->data.player_to_play = (PlayerColor)(b->data.player_to_play ^ (WHITE | BLACK)); // flipping player back so as to not interfere with remaining processes
+
+    // moves = (player == 1) ? moves : moves_flip; //White's moves
+    // moves_flip = (player == 0) ? moves : moves_flip; //Black's moves
+
+    val += range_weight * (moves_flip.size() - moves.size()) * pow(-1, player); // Calculates range (always white - black)
+
+    /*Taking union -> Note: we dont need to care about coinciding positions because if there existed coinciding
+    positions it implies there was no oponent piece in that square in first place */
+    moves.insert(moves_flip.begin(), moves_flip.end());
+
+    // Calculating threats
+    for (auto m : moves)
+    {
+        U8 p1 = getp1(m);
+        for (int i = 0; i < 12; i++)
+        {
+            int temp = 0;
+            if (pieces[i] == p1)
+            {
+                // val += (((int(i >= 6) - int(i < 6))) * weight_arr[i])* (pieces[i] != DEAD);
+                U8 piecetype = b->data.board_0[pieces[i]];
+                temp += ((piecetype & PAWN) == PAWN) * p;
+                temp += ((piecetype & BISHOP) == BISHOP) * bi;
+                temp += ((piecetype & ROOK) == ROOK) * r;
+                temp *= std::pow(-1, (piecetype & BLACK) == BLACK);
+            }
+            val += temp * threat_weight;
+        }
+    }
+    return val;
+}
+
+float eval_fn(Board *b, bool cutoff_end)
 {
     float final_val = 0;
     final_val += material_check(b);
     final_val += check_condition(b);
+    // if (cutoff_end == 1)
+    // {
+    //     std::unordered_set<U16> moves = b->get_legal_moves();
+    //     final_val += range_and_threats(b, moves, 0.1, 0.3);
+    // }
     return final_val;
 }
 
@@ -236,7 +292,7 @@ void print_state(Board *b, U16 move, int cutoff)
     }
 }
 
-void print_moveset(auto moveset)
+void print_moveset(std::unordered_set<U16> moveset)
 {
     std::cout << "Moves that can be taken from this node: ";
     for (auto m : moveset)
@@ -251,7 +307,7 @@ float MinVal(Board *b, float alpha, float beta, int cutoff)
     auto moveset = b->get_legal_moves();
     if (cutoff == 0 || moveset.size() == 0)
     {
-        return eval_fn(b);
+        return eval_fn(b, 1);
     }
 
     float min_val = std::numeric_limits<float>::max();
@@ -277,7 +333,7 @@ float MaxVal(Board *b, float alpha, float beta, int cutoff)
     auto moveset = b->get_legal_moves();
     if (cutoff == 0 || moveset.size() == 0)
     {
-        return eval_fn(b);
+        return eval_fn(b, 1);
     }
     float max_val = std::numeric_limits<float>::lowest();
     for (auto m : moveset)
@@ -340,11 +396,17 @@ U16 best_move_obtained = 0;
 
 float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximizing)
 {
+
+    if (cutoff == 0)
+    {
+        return eval_fn(b, 1);
+    }
+
     std::unordered_set<U16> moveset = b->get_legal_moves();
 
-    if (cutoff == 0 || moveset.size() == 0)
+    if (moveset.size() == 0)
     {
-        return eval_fn(b);
+        return eval_fn(b, 0);
     }
 
     // Ordering the values using lambda function:
@@ -353,11 +415,11 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     auto order_moves = [b](U16 move1, U16 move2)
     {
         do_move(b, move1);
-        float val1 = eval_fn(b);
+        float val1 = eval_fn(b, 0);
         undo_last_move(b, move1);
 
         do_move(b, move2);
-        float val2 = eval_fn(b);
+        float val2 = eval_fn(b, 0);
         undo_last_move(b, move2);
 
         return val1 > val2;
@@ -366,9 +428,9 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     std::sort(ordered_moveset.begin(), ordered_moveset.end(), order_moves); // Sorted in descending order
 
     // print_moveset(moveset);
-    std::cout << "\nOrdered Moveset->\n\n";
-    print_moveset(ordered_moveset);
-    std::cout << "\n";
+    // std::cout << "\nOrdered Moveset->\n\n";
+    // print_moveset(ordered_moveset);
+    // std::cout << "\n";
 
     if (Maximizing)
     {
