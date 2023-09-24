@@ -320,6 +320,20 @@ float eval_fn(Board *b)
     return final_val;
 }
 
+// float order_helper(Board *b,U16 move){
+//     do_move(b,move);
+//     float val = eval_fn(b);
+//     undo_last_move(b,move);
+//     return val;
+// }
+
+// std::vector<U16> order_moves(std::unordered_set<U16> move_set)
+// {
+//     std::vector<U16> ordered_moves(move_set.begin(), move_set.end());
+//     std::sort(ordered_moves.begin(), ordered_moves.end(), order_helper);
+//     return ordered_moves;
+// }
+
 void print_state(Board *b, U16 move, int cutoff)
 {
     std::cout << "Present board state:" << std::endl;
@@ -338,7 +352,7 @@ void print_state(Board *b, U16 move, int cutoff)
     }
 }
 
-void print_moveset(std::unordered_set<U16> moveset)
+void print_moveset(auto moveset)
 {
     std::cout << "Moves that can be taken from this node: ";
     for (auto m : moveset)
@@ -358,15 +372,43 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     if (moveset.size() == 0)
         return eval_fn(b);
 
+    // Ordering the values using lambda function:
+    std::vector<U16> ordered_moveset(moveset.begin(), moveset.end());
+
+    // if (cutoff < 4)
+    // {
+    auto order_moves = [b](U16 move1, U16 move2)
+    {
+        do_move(b, move1);
+        float val1 = eval_fn(b);
+        undo_last_move(b, move1);
+
+        do_move(b, move2);
+        float val2 = eval_fn(b);
+        undo_last_move(b, move2);
+
+        return val1 > val2;
+    };
+
+    std::sort(ordered_moveset.begin(), ordered_moveset.end(), order_moves); // Sorted in descending order
+    //     is_sorted = true;
+    // }
+
+    // print_moveset(moveset);
+    // std::cout << "\nOrdered Moveset->\n\n";
+    // print_moveset(ordered_moveset);
+    // std::cout << "\n";
+
     if (Maximizing)
     {
         float max_eval = std::numeric_limits<float>::lowest();
-        for (auto m : moveset)
+        for (auto m : ordered_moveset)
         {
             do_move(b, m);
             float eval = unified_minimax(b, cutoff - 1, alpha, beta, false);
             undo_last_move(b, m);
             max_eval = std::max(max_eval, eval);
+            // std::cout << "For the move: " << move_to_str(m) << " , The eval is " << eval << " , Maxeval = " << max_eval << "\n";
             if (cutoff == global_cutoff && eval > alpha)
             {
                 best_move_obtained = m;
@@ -381,8 +423,14 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     }
     else
     {
+
+        // if (is_sorted)
+        // {
+        std::reverse(ordered_moveset.begin(), ordered_moveset.end());
+        // }
+
         float min_eval = std::numeric_limits<float>::max();
-        for (auto m : moveset)
+        for (auto m : ordered_moveset)
         {
             do_move(b, m);
             float eval = unified_minimax(b, cutoff - 1, alpha, beta, true);
