@@ -15,6 +15,18 @@ rollerball:
 	mkdir -p bin
 	$(CC) $(CFLAGS) $(INCLUDES) src/server.cpp src/board.cpp src/engine.cpp src/rollerball.cpp src/uciws.cpp -lpthread -o bin/rollerball
 
+bot1:
+	mkdir -p bin
+	$(CC) $(CFLAGS) $(INCLUDES) src/server.cpp src/board.cpp src/bot1.cpp src/rollerball.cpp src/uciws.cpp -lpthread -o bin/bot1
+
+bot2:
+	mkdir -p bin
+	$(CC) $(CFLAGS) $(INCLUDES) src/server.cpp src/board.cpp src/bot2.cpp src/rollerball.cpp src/uciws.cpp -lpthread -o bin/bot2
+
+bot3:
+	mkdir -p bin
+	$(CC) $(CFLAGS) $(INCLUDES) src/server.cpp src/board.cpp src/bot3.cpp src/rollerball.cpp src/uciws.cpp -lpthread -o bin/bot3
+
 rollerball_py:
 	mkdir -p bin
 	pip install -e .
