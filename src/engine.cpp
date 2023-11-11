@@ -200,10 +200,53 @@ float check_condition(Board *b)
     if (b->in_check())
     {
         // if white is in check, bad, negative
-        val = 5 * std::pow(-1, int(player));
+        val = 10 * std::pow(-1, int(player));
         if (b->get_legal_moves().size() == 0) // if you're checkmated
         {
             val += 500 * std::pow(-1, int(player));
+        }
+    }
+    return val;
+}
+
+// Calculates how ranges covered + threats given
+float range_and_threats(Board *b, std::unordered_set<U16> moves, float range_weight, float threat_weight)
+{
+    bool player = (b->data.player_to_play == WHITE);
+    float val = 0;
+    float p = 2, bi = 4, r = 6;
+    U8 *pieces = (U8 *)(&(b->data));
+
+    b->data.player_to_play = (PlayerColor)(b->data.player_to_play ^ (WHITE | BLACK)); // flipping player
+    std::unordered_set<U16> moves_flip = b->get_legal_moves();
+    b->data.player_to_play = (PlayerColor)(b->data.player_to_play ^ (WHITE | BLACK)); // flipping player back so as to not interfere with remaining processes
+
+    // moves = (player == 1) ? moves : moves_flip; //White's moves
+    // moves_flip = (player == 0) ? moves : moves_flip; //Black's moves
+
+    val += range_weight * (moves_flip.size() - moves.size()) * pow(-1, player); // Calculates range (always white - black)
+
+    /*Taking union -> Note: we dont need to care about coinciding positions because if there existed coinciding
+    positions it implies there was no oponent piece in that square in first place */
+    moves.insert(moves_flip.begin(), moves_flip.end());
+
+    // Calculating threats
+    for (auto m : moves)
+    {
+        U8 p1 = getp1(m);
+        for (int i = 0; i < 12; i++)
+        {
+            int temp = 0;
+            if (pieces[i] == p1)
+            {
+                // val += (((int(i >= 6) - int(i < 6))) * weight_arr[i])* (pieces[i] != DEAD);
+                U8 piecetype = b->data.board_0[pieces[i]];
+                temp += ((piecetype & PAWN) == PAWN) * p;
+                temp += ((piecetype & BISHOP) == BISHOP) * bi;
+                temp += ((piecetype & ROOK) == ROOK) * r;
+                temp *= std::pow(-1, (piecetype & BLACK) == BLACK);
+            }
+            val += temp * threat_weight;
         }
     }
     return val;
@@ -312,8 +355,8 @@ float rook_distance(Board *b)
 float eval_fn(Board *b)
 {
     float final_val = 0;
-    final_val += 10 * material_check(b);
-    final_val += 3 * check_condition(b);
+    final_val += 1 * material_check(b);
+    final_val += 1 * check_condition(b);
     // final_val += 0.01 * pawn_distance(b);
     // final_val += 0.02 * rook_distance(b);
     return final_val;
