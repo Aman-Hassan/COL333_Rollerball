@@ -3,6 +3,8 @@
 #include <iostream>
 #include <limits>
 #include <chrono>
+#include <bitset>
+#include <math.h>
 
 #include "board.hpp"
 #include "engine.hpp"
@@ -84,13 +86,16 @@ void do_move(Board *b, U16 move)
         }
     }
 
+    last_killed_pieces.pop_back();
+    last_killed_pieces_idx.pop_back();
+
     if (promo == PAWN_ROOK)
     {
-        piecetype = (piecetype & (WHITE | BLACK)) | ROOK;
+        piecetype = ((piecetype & (WHITE | BLACK)) ^ ROOK) | PAWN;
     }
     else if (promo == PAWN_BISHOP)
     {
-        piecetype = (piecetype & (WHITE | BLACK)) | BISHOP;
+        piecetype = ((piecetype & (WHITE | BLACK)) ^ BISHOP) | PAWN;
     }
 
     b->data.board_0[p1] = piecetype;
@@ -164,22 +169,31 @@ void undo_last_move(Board *b, U16 move)
 }
 
 // No of white - No of black
-float material_check(const Board *b)
+float material_check(Board *b)
 {
     float val = 0;
-    float weight_arr[12] = {8, 8, 0, 4, 2, 2, 8, 8, 0, 4, 2, 2};
+    // float weight_arr[12] = {8, 8, 0, 4, 2, 2, 8, 8, 0, 4, 2, 2};
+    float p = 2, bi = 4, r = 8;
     U8 *pieces = (U8 *)(&(b->data));
     for (int i = 0; i < 12; i++)
     {
+        int temp = 0;
         if (pieces[i] != DEAD)
         {
-            val += ((int(i >= 6) - int(i < 6))) * weight_arr[i];
+            // val += (((int(i >= 6) - int(i < 6))) * weight_arr[i])* (pieces[i] != DEAD);
+
+            U8 piecetype = b->data.board_0[pieces[i]];
+            temp += ((piecetype & PAWN) == PAWN) * p;
+            temp += ((piecetype & BISHOP) == BISHOP) * bi;
+            temp += ((piecetype & ROOK) == ROOK) * r;
+            temp *= std::pow(-1, (piecetype & BLACK) == BLACK);
         }
+        val += temp;
     }
     return val;
 }
 
-float check_condition(const Board *b)
+float check_condition(Board *b)
 {
     //
     float val = 0;
@@ -196,11 +210,113 @@ float check_condition(const Board *b)
     return val;
 }
 
-float eval_fn(const Board *b)
+float pawn_distance(Board *b)
+{
+    float val = 0;
+    // the below are the proper non-overlapping sector regions.
+    std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
+    std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
+    std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
+    std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+    U8 corners[4] = {pos(5, 1), pos(1, 1), pos(1, 5), pos(5, 5)};
+    U8 *pieces = (U8 *)(&(b->data));
+
+    int ids[4] = {4, 5, 10, 11};
+    for (int i = 0; i < 4; i++) // for each piece
+    {
+        std::bitset<4> piece_arr;
+        std::bitset<4> king_arr;
+        U8 piece_pos = pieces[ids[i]];
+        U8 king_pos = pieces[(i > 5) * 2 + (i <= 5) * 8];
+        U8 piecetype = b->data.board_0[piece_pos];
+
+        if (piece_pos == DEAD || (piecetype & PAWN) != PAWN)
+            continue;
+        piece_arr[0] = bottom.count(piece_pos);
+        piece_arr[1] = left.count(piece_pos);
+        piece_arr[2] = top.count(piece_pos);
+        piece_arr[3] = right.count(piece_pos);
+        king_arr[0] = bottom.count(king_pos);
+        king_arr[1] = left.count(king_pos);
+        king_arr[2] = top.count(king_pos);
+        king_arr[3] = right.count(king_pos);
+        int sector_dist = (int)std::log2((piece_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4;
+        int piece_c = 0;
+        int king_c = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            piece_c += (int)piece_arr[i] * corners[i];
+            king_c += (int)king_arr[i] * corners[i];
+        }
+        int piece_dist = std::abs(getx(piece_pos) - getx(piece_c)) + std::abs(gety(piece_pos) - gety(piece_c));
+        int king_dist = std::abs(getx(king_pos) - getx(king_c)) + std::abs(gety(king_pos) - gety(king_c));
+        int diff = king_dist - piece_dist;
+        if (diff < 0)
+            diff += 40;
+        int total_dist = diff + 4 * sector_dist;
+        val -= total_dist * std::pow(-1, (piecetype & BLACK) == BLACK);
+    }
+    return val;
+}
+
+float rook_distance(Board *b)
+{
+    float val = 0;
+    // std::unordered_set<U8> bottom({1, 2, 3, 4, 5, 6, 10, 11, 12, 13});
+    // std::unordered_set<U8> left({0, 8, 16, 24, 32, 40, 9, 17, 25, 33});
+    // std::unordered_set<U8> top({48, 49, 50, 51, 52, 53, 41, 42, 43, 44});
+    // std::unordered_set<U8> right({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+
+    std::unordered_set<U8> bottom_r({2, 3, 4, 5, 6, 10, 11, 12, 13, 14});
+    std::unordered_set<U8> left_r({0, 1, 8, 9, 16, 24, 32, 17, 25, 33});
+    std::unordered_set<U8> top_r({50, 51, 52, 42, 43, 44, 40, 41, 48, 49});
+    std::unordered_set<U8> right_r({54, 46, 38, 30, 22, 14, 45, 37, 29, 21});
+
+    std::unordered_set<U8> bottom_l({0, 1, 8, 9, 2, 3, 4, 10, 11, 12});
+    std::unordered_set<U8> left_l({40, 41, 48, 49, 16, 24, 32, 17, 25, 33});
+    std::unordered_set<U8> top_l({45, 46, 53, 54, 50, 51, 52, 42, 43, 44});
+    std::unordered_set<U8> right_l({5, 6, 13, 14, 38, 30, 22, 37, 29, 21});
+    U8 *pieces = (U8 *)(&(b->data));
+
+    int ids[8] = {0, 1, 4, 5, 6, 7, 10, 11}; // iterate through rooks and pawns(maybe upgraded)
+    for (int i = 0; i < 8; i++)
+    {
+        std::bitset<4> piece_arr;
+        std::bitset<4> king_arr;
+        U8 piece_pos = pieces[ids[i]];
+        U8 king_pos = pieces[(i > 5) * 2 + (i <= 5) * 8];
+        U8 piecetype = b->data.board_0[piece_pos];
+
+        if (piece_pos == DEAD || (piecetype & ROOK) != ROOK)
+            continue;
+        piece_arr[0] = bottom_r.count(piece_pos);
+        piece_arr[1] = left_r.count(piece_pos);
+        piece_arr[2] = top_r.count(piece_pos);
+        piece_arr[3] = right_r.count(piece_pos);
+        king_arr[0] = bottom_l.count(king_pos);
+        king_arr[1] = left_l.count(king_pos);
+        king_arr[2] = top_l.count(king_pos);
+        king_arr[3] = right_l.count(king_pos);
+        int sector_dist = 0;
+        if ((piece_arr.to_ulong() & piece_arr.to_ulong()) > 0)
+            sector_dist = 5;
+        else
+            sector_dist = (int)std::log2((piece_arr.to_ulong() << 4) / king_arr.to_ulong()) % 4; // 0 to 3
+
+        // std::cout << "rook:" << rook_arr.to_ulong() << "king:" << king_arr.to_ulong() << "\n";
+
+        val -= 8 * sector_dist * std::pow(-1, (piecetype & BLACK) == BLACK);
+    }
+    return val;
+}
+
+float eval_fn(Board *b)
 {
     float final_val = 0;
-    final_val += material_check(b);
-    final_val += check_condition(b);
+    final_val += 10 * material_check(b);
+    final_val += 3 * check_condition(b);
+    // final_val += 0.01 * pawn_distance(b);
+    // final_val += 0.02 * rook_distance(b);
     return final_val;
 }
 
@@ -232,96 +348,6 @@ void print_moveset(std::unordered_set<U16> moveset)
     std::cout << std::endl;
 }
 
-float MinVal(Board *b, float alpha, float beta, int cutoff)
-{
-    auto moveset = b->get_legal_moves();
-    if (cutoff == 0 || moveset.size() == 0)
-    {
-        return eval_fn(b);
-    }
-
-    float min_val = std::numeric_limits<float>::max();
-    for (auto m : moveset)
-    {
-        do_move(b, m);
-        // moves_taken.push_back(move_to_str(m));
-        float child = MaxVal(b, alpha, beta, cutoff - 1);
-        beta = std::min(beta, child);
-        min_val = std::min(min_val, child);
-        // moves_taken.pop_back();
-        undo_last_move(b, m);
-        if (alpha >= beta)
-        {
-            break;
-        }
-    }
-    return min_val;
-}
-
-float MaxVal(Board *b, float alpha, float beta, int cutoff)
-{
-    auto moveset = b->get_legal_moves();
-    if (cutoff == 0 || moveset.size() == 0)
-    {
-        return eval_fn(b);
-    }
-    float max_val = std::numeric_limits<float>::lowest();
-    for (auto m : moveset)
-    {
-        do_move(b, m);
-        // moves_taken.push_back(move_to_str(m));
-        float child = MinVal(b, alpha, beta, cutoff - 1);
-        alpha = std::max(alpha, child);
-        max_val = std::max(max_val, child);
-        // moves_taken.pop_back();
-        undo_last_move(b, m);
-        if (alpha >= beta)
-        {
-            break;
-        }
-    }
-    return max_val;
-}
-
-// U16 bestmove = 0;
-
-U16 Minimax(Board *b, int cutoff)
-{
-    auto moveset = b->get_legal_moves();
-    print_moveset(moveset);
-    U16 bestmove = 0;
-
-    float alpha = std::numeric_limits<float>::lowest(); // ::min() would only give least positive float instead of smallest float
-    float beta = std::numeric_limits<float>::max();
-    if (b->data.player_to_play == WHITE) // Runs maxval if white
-    {
-        for (auto m : moveset)
-        {
-            do_move(b, m);
-            // moves_taken.push_back(move_to_str(m));
-            float child = MinVal(b, alpha, beta, cutoff - 1);
-            if (child > alpha)
-                bestmove = m;
-            alpha = std::max(alpha, child);
-            undo_last_move(b, m);
-            // moves_taken.pop_back();
-        }
-    }
-    else
-    {
-        for (auto m : moveset)
-        {
-            do_move(b, m);
-            float child = MaxVal(b, alpha, beta, cutoff - 1);
-            if (child < beta)
-                bestmove = m;
-            beta = std::min(beta, child);
-            undo_last_move(b, m);
-        }
-    }
-    return bestmove;
-}
-
 U16 best_move_obtained = 0;
 
 float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximizing)
@@ -331,6 +357,33 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     auto moveset = b->get_legal_moves();
     if (moveset.size() == 0)
         return eval_fn(b);
+
+    // Ordering the values using lambda function:
+    std::vector<U16> ordered_moveset(moveset.begin(), moveset.end());
+
+    // if (cutoff < 4)
+    // {
+    auto order_moves = [b](U16 move1, U16 move2)
+    {
+        do_move(b, move1);
+        float val1 = eval_fn(b);
+        undo_last_move(b, move1);
+
+        do_move(b, move2);
+        float val2 = eval_fn(b);
+        undo_last_move(b, move2);
+
+        return val1 > val2;
+    };
+
+    std::sort(ordered_moveset.begin(), ordered_moveset.end(), order_moves); // Sorted in descending order
+    //     is_sorted = true;
+    // }
+
+    // print_moveset(moveset);
+    // std::cout << "\nOrdered Moveset->\n\n";
+    // print_moveset(ordered_moveset);
+    // std::cout << "\n";
 
     if (Maximizing)
     {
@@ -355,6 +408,12 @@ float unified_minimax(Board *b, int cutoff, float alpha, float beta, bool Maximi
     }
     else
     {
+
+        // if (is_sorted)
+        // {
+        std::reverse(ordered_moveset.begin(), ordered_moveset.end());
+        // }
+
         float min_eval = std::numeric_limits<float>::max();
         for (auto m : moveset)
         {
