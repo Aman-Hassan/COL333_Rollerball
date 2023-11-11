@@ -86,16 +86,13 @@ void do_move(Board *b, U16 move)
         }
     }
 
-    last_killed_pieces.pop_back();
-    last_killed_pieces_idx.pop_back();
-
     if (promo == PAWN_ROOK)
     {
-        piecetype = ((piecetype & (WHITE | BLACK)) ^ ROOK) | PAWN;
+        piecetype = (piecetype & (WHITE | BLACK)) | ROOK;
     }
     else if (promo == PAWN_BISHOP)
     {
-        piecetype = ((piecetype & (WHITE | BLACK)) ^ BISHOP) | PAWN;
+        piecetype = (piecetype & (WHITE | BLACK)) | BISHOP;
     }
 
     b->data.board_0[p1] = piecetype;
@@ -115,6 +112,7 @@ void do_move(Board *b, U16 move)
 
 void undo_last_move(Board *b, U16 move)
 {
+
     U8 p0 = getp0(move);
     U8 p1 = getp1(move);
     U8 promo = getpromo(move);
@@ -166,7 +164,6 @@ void undo_last_move(Board *b, U16 move)
     // std::cout << "Undid last move\n";
     // std::cout << all_boards_to_str(*this);
 }
-
 // No of white - No of black
 float material_check(Board *b)
 {
